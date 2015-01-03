@@ -111,19 +111,12 @@ class RobotLoader extends Nette\Object
 
 	/**
 	 * Add directory (or directories) to list.
-	 * @param  string|array
+	 * @param  string|array  absolute path
 	 * @return self
-	 * @throws Nette\DirectoryNotFoundException if path is not found
 	 */
 	public function addDirectory($path)
 	{
-		foreach ((array) $path as $val) {
-			$real = realpath($val);
-			if ($real === FALSE) {
-				throw new Nette\DirectoryNotFoundException("Directory '$val' not found.");
-			}
-			$this->scanDirs[] = $real;
-		}
+		$this->scanDirs = array_merge($this->scanDirs, (array) $path);
 		return $this;
 	}
 
@@ -170,7 +163,7 @@ class RobotLoader extends Nette\Object
 		}
 
 		$this->classes = array();
-		foreach (array_unique($this->scanDirs) as $dir) {
+		foreach ($this->scanDirs as $dir) {
 			foreach ($this->createFileIterator($dir) as $file) {
 				$file = $file->getPathname();
 				if (isset($files[$file]) && $files[$file]['time'] == filemtime($file)) {
@@ -178,6 +171,7 @@ class RobotLoader extends Nette\Object
 				} else {
 					$classes = $this->scanPhp(file_get_contents($file));
 				}
+				$files[$file] = array('classes' => array(), 'time' => filemtime($file));
 
 				foreach ($classes as $class) {
 					$info = & $this->classes[strtolower($class)];
@@ -196,11 +190,14 @@ class RobotLoader extends Nette\Object
 	/**
 	 * Creates an iterator scaning directory for PHP files, subdirectories and 'netterobots.txt' files.
 	 * @return \Iterator
+	 * @throws Nette\IOException if path is not found
 	 */
 	private function createFileIterator($dir)
 	{
-		if (!is_dir($dir)) {
+		if (is_file($dir)) {
 			return new \ArrayIterator(array(new \SplFileInfo($dir)));
+		} elseif (!is_dir($dir)) {
+			throw new Nette\IOException("File or directory '$dir' not found.");
 		}
 
 		$ignoreDirs = is_array($this->ignoreDirs) ? $this->ignoreDirs : preg_split('#[,\s]+#', $this->ignoreDirs);
