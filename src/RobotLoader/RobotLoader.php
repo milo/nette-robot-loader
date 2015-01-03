@@ -34,7 +34,7 @@ class RobotLoader extends Nette\Object
 	public $autoRebuild = TRUE;
 
 	/** @var array */
-	private $scanDirs = array();
+	private $scanPaths = array();
 
 	/** @var array of lowered-class => [file, time, orig] or num-of-retry */
 	private $classes = array();
@@ -110,13 +110,13 @@ class RobotLoader extends Nette\Object
 
 
 	/**
-	 * Add directory (or directories) to list.
+	 * Add path (or paths) to list.
 	 * @param  string|array  absolute path
 	 * @return self
 	 */
 	public function addDirectory($path)
 	{
-		$this->scanDirs = array_merge($this->scanDirs, (array) $path);
+		$this->scanPaths = array_merge($this->scanPaths, (array) $path);
 		return $this;
 	}
 
@@ -163,8 +163,8 @@ class RobotLoader extends Nette\Object
 		}
 
 		$this->classes = array();
-		foreach ($this->scanDirs as $dir) {
-			foreach ($this->createFileIterator($dir) as $file) {
+		foreach ($this->scanPaths as $path) {
+			foreach ($this->createFileIterator($path) as $file) {
 				$file = $file->getPathname();
 				if (isset($files[$file]) && $files[$file]['time'] == filemtime($file)) {
 					$classes = $files[$file]['classes'];
@@ -192,12 +192,12 @@ class RobotLoader extends Nette\Object
 	 * @return \Iterator
 	 * @throws Nette\IOException if path is not found
 	 */
-	private function createFileIterator($dir)
+	private function createFileIterator($path)
 	{
-		if (is_file($dir)) {
-			return new \ArrayIterator(array(new \SplFileInfo($dir)));
-		} elseif (!is_dir($dir)) {
-			throw new Nette\IOException("File or directory '$dir' not found.");
+		if (is_file($path)) {
+			return new \ArrayIterator(array(new SplFileInfo($path)));
+		} elseif (!is_dir($path)) {
+			throw new Nette\IOException("File or directory '$path' not found.");
 		}
 
 		$ignoreDirs = is_array($this->ignoreDirs) ? $this->ignoreDirs : preg_split('#[,\s]+#', $this->ignoreDirs);
@@ -212,7 +212,7 @@ class RobotLoader extends Nette\Object
 			->filter(function(SplFileInfo $file) use (& $disallow) {
 				return !isset($disallow[$file->getPathname()]);
 			})
-			->from($dir)
+			->from($path)
 			->exclude($ignoreDirs)
 			->filter($filter = function(SplFileInfo $dir) use (& $disallow) {
 				$path = $dir->getPathname();
@@ -226,7 +226,7 @@ class RobotLoader extends Nette\Object
 				return !isset($disallow[$path]);
 			});
 
-		$filter(new SplFileInfo($dir));
+		$filter(new SplFileInfo($path));
 		return $iterator;
 	}
 
@@ -375,7 +375,7 @@ class RobotLoader extends Nette\Object
 	 */
 	protected function getKey()
 	{
-		return array($this->ignoreDirs, $this->acceptFiles, $this->scanDirs);
+		return array($this->ignoreDirs, $this->acceptFiles, $this->scanPaths);
 	}
 
 }
